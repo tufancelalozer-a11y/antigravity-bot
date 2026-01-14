@@ -151,7 +151,7 @@ async def virtual_trader_worker():
     from datetime import datetime
     
     db = DatabaseManager()
-    exch = ccxt_async.binance()
+    exch = ccxt_async.gateio()  # Gate.io yerine Binance (Amerika IP engeli yok)
     symbol = 'BTC/USDT'
     margin = 100.0
     leverage = 50
@@ -265,8 +265,18 @@ async def virtual_trader_worker():
 async def lifespan(app: FastAPI):
     # Startup: Borsa Persist Baglantilarini Kur
     import ccxt.async_support as ccxt
+    import os
+    
+    # Gate.io API credentials from environment variables
+    gateio_key = os.getenv('GATEIO_API_KEY', '')
+    gateio_secret = os.getenv('GATEIO_SECRET_KEY', '')
+    
     persistent_exchanges = {
-        'binance': ccxt.binance(),
+        'gateio': ccxt.gateio({
+            'apiKey': gateio_key,
+            'secret': gateio_secret,
+            'enableRateLimit': True
+        }),
         'bybit': ccxt.bybit(),
         'kucoin': ccxt.kucoin()
     }

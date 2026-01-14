@@ -87,7 +87,7 @@ async def get_arbitrage_data_async(provided_exchanges=None):
     Borsalardan verileri toplu çeker ve fırsatları hesaplar.
     provided_exchanges: Eğer dışarıdan (bridge_server) persist instance'lar gelirse onları kullanır.
     """
-    exchange_names = ['binance', 'bybit', 'kucoin'] # Kraken yerine daha hızlı olan Kucoin eklendi
+    exchange_names = ['gateio', 'bybit', 'kucoin'] # Binance yerine Gate.io (Amerika IP engeli yok)
     
     # Instance yönetimi
     if provided_exchanges:
