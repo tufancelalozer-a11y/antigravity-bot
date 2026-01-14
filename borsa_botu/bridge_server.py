@@ -17,7 +17,7 @@ from database_manager import DatabaseManager
 from youtube_extractor import extract_channel_videos
 import json
 
-BASE_DIR = r"C:\Google Antigravity\borsa_botu"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATE_FILE = os.path.join(BASE_DIR, "quadrant_state.json")
 
 def save_state():
@@ -89,9 +89,10 @@ SYSTEM_STATE = {
 load_state()
 
 db = DatabaseManager()
-BASE_DIR = r"C:\Google Antigravity\borsa_botu"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, "borsa_gunlugu.txt")
 CSV_FILE = os.path.join(BASE_DIR, "sampiyon_islemler.csv")
+HISTORY_CSV = os.path.join(BASE_DIR, "sampiyon_islemler_history.csv")
 
 # --- Workers (Arka Plan Isçileri) ---
 
@@ -130,8 +131,8 @@ async def metrics_worker():
         try:
             # CSV'den verileri veritabanına taşı
             db.sync_from_csv(CSV_FILE)
-            if os.path.exists(r"C:\Google Antigravity\borsa_botu\sampiyon_islemler_history.csv"):
-                db.sync_from_csv(r"C:\Google Antigravity\borsa_botu\sampiyon_islemler_history.csv")
+            if os.path.exists(HISTORY_CSV):
+                db.sync_from_csv(HISTORY_CSV)
         except Exception as e:
             log_message(f"Worker Error (Metrics): {e}")
         await asyncio.sleep(60)

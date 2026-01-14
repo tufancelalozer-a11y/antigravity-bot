@@ -3,7 +3,11 @@ import os
 import time
 
 class DatabaseManager:
-    def __init__(self, db_path=r"C:\Google Antigravity\borsa_botu\deepverify.db"):
+    def __init__(self, db_path=None):
+        if db_path is None:
+            # Scriptin olduğu klasöre göre belirle
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            db_path = os.path.join(current_dir, "deepverify.db")
         self.db_path = db_path
         self._initialize_db()
 
