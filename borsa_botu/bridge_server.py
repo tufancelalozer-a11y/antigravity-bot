@@ -348,6 +348,13 @@ async def get_history():
     metrics = db.get_metrics()
     return {"trades": metrics["trades"], "total_pnl": metrics["total_pnl"], "balance": metrics["balance"]}
 
+@app.get("/history/{bot_name}")
+async def get_bot_history(bot_name: str):
+    """Belirli bir botun işlem geçmişini döner."""
+    all_trades = db.get_metrics()["trades"]
+    bot_trades = [t for t in all_trades if t.get("bot_name") == bot_name]
+    return {"bot_name": bot_name, "trades": bot_trades}
+
 @app.get("/arbitrage")
 async def get_arbitrage():
     """Anlik arbitraj verisini döner (Sifir bekleme)."""
@@ -409,6 +416,30 @@ async def reset_system():
     SYSTEM_STATE["logs"].append("🧹 SISTEM SIFIRLANDI: Tum bakiyeler 250$ yapildi.")
     save_state()
     return {"status": "success", "message": "Sistem sifirlandi."}
+
+@app.post("/control/reset/{bot_id}")
+async def reset_bot(bot_id: int):
+    """Belirli bir botu sıfırlar."""
+    global SYSTEM_STATE
+    bot = next((b for b in SYSTEM_STATE["bots"] if b["id"] == bot_id), None)
+    
+    if not bot:
+        return {"error": "Bot bulunamadi"}
+    
+    old_balance = bot["balance"]
+    bot["balance"] = 250.0
+    bot["pnl"] = 0.0
+    bot["active_trade"] = None
+    bot["active"] = False
+    bot["_manual_exit"] = False
+    
+    # Global balance'ı ayarla
+    SYSTEM_STATE["status"]["global_balance"] += (250.0 - old_balance)
+    SYSTEM_STATE["status"]["total_pnl"] -= bot["pnl"]
+    
+    SYSTEM_STATE["logs"].append(f"🔄 {bot['name']} SIFIRLANDI: Bakiye 250$ yapildi.")
+    save_state()
+    return {"status": "success", "message": f"{bot['name']} sifirlandi."}
 
 @app.get("/dashboard")
 async def get_dashboard():
@@ -494,8 +525,9 @@ async def get_dashboard():
                 border: 1px solid #1e293b;
                 overflow: hidden;
                 transition: transform 0.2s;
+                cursor: pointer;
             }
-            .bot-card:hover { transform: translateY(-4px); }
+            .bot-card:hover { transform: translateY(-4px); box-shadow: 0 8px 16px rgba(79, 70, 229, 0.3); }
             .bot-header {
                 padding: 1rem;
                 background: #1e293b;
@@ -517,6 +549,66 @@ async def get_dashboard():
             .bot-body { padding: 1rem; }
             .bot-info { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
             .bot-info span:first-child { color: var(--text-dim); }
+
+            /* Modal Styles */
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                justify-content: center;
+                align-items: center;
+            }
+            .modal.active { display: flex; }
+            .modal-content {
+                background: var(--card-bg);
+                border-radius: 12px;
+                padding: 2rem;
+                max-width: 800px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+                border: 1px solid var(--accent);
+            }
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+            }
+            .modal-title {
+                font-family: 'Orbitron', sans-serif;
+                font-size: 1.5rem;
+                color: var(--accent);
+            }
+            .close-btn {
+                background: var(--red);
+                color: white;
+                border: none;
+                padding: 0.5rem 1rem;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+            .trade-item {
+                background: #0f172a;
+                padding: 1rem;
+                margin-bottom: 1rem;
+                border-radius: 8px;
+                border-left: 3px solid var(--accent);
+            }
+            .trade-row {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 0.5rem;
+            }
+            .trade-label { color: var(--text-dim); }
+            .trade-value { font-weight: bold; }
+            .trade-value.profit { color: var(--green); }
+            .trade-value.loss { color: var(--red); }
 
             .logs-container {
                 background: #0f172a;
@@ -578,6 +670,19 @@ async def get_dashboard():
             </div>
         </div>
 
+        <!-- Trade History Modal -->
+        <div id="trade-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="modal-bot-name">Bot İşlem Geçmişi</div>
+                    <button class="close-btn" onclick="closeModal()">Kapat</button>
+                </div>
+                <div id="trade-list">
+                    <!-- İşlemler buraya gelecek -->
+                </div>
+            </div>
+        </div>
+
         <script>
             async function fetchData() {
                 try {
@@ -602,7 +707,7 @@ async def get_dashboard():
                     bots.bots.forEach(bot => {
                         const tradeStatus = bot.active_trade ? bot.active_trade.side : 'WAIT';
                         const card = `
-                            <div class="bot-card">
+                            <div class="bot-card" onclick="showBotHistory('${bot.name}')">
                                 <div class="bot-header">
                                     <span class="bot-name">${bot.name}</span>
                                     <span class="bot-status ${tradeStatus.toLowerCase()}">${tradeStatus}</span>
@@ -632,6 +737,56 @@ async def get_dashboard():
                     await fetch('/control/reset', { method: 'POST' });
                     fetchData();
                 }
+            }
+
+            async function showBotHistory(botName) {
+                document.getElementById('modal-bot-name').innerText = `${botName} - İşlem Geçmişi`;
+                const modal = document.getElementById('trade-modal');
+                const tradeList = document.getElementById('trade-list');
+                
+                tradeList.innerHTML = '<p style="text-align:center; color: var(--text-dim);">Yükleniyor...</p>';
+                modal.classList.add('active');
+                
+                try {
+                    const res = await fetch(`/history/${botName}`);
+                    const data = await res.json();
+                    
+                    if (data.trades.length === 0) {
+                        tradeList.innerHTML = '<p style="text-align:center; color: var(--text-dim);">Henüz işlem yapılmamış.</p>';
+                        return;
+                    }
+                    
+                    tradeList.innerHTML = data.trades.map(t => `
+                        <div class="trade-item">
+                            <div class="trade-row">
+                                <span class="trade-label">Yön:</span>
+                                <span class="trade-value" style="color: ${t.side === 'LONG' ? 'var(--green)' : 'var(--red)'}">${t.side}</span>
+                            </div>
+                            <div class="trade-row">
+                                <span class="trade-label">Giriş:</span>
+                                <span class="trade-value">${t.entry_price}$ (${t.entry_time})</span>
+                            </div>
+                            <div class="trade-row">
+                                <span class="trade-label">Çıkış:</span>
+                                <span class="trade-value">${t.exit_price}$ (${t.exit_time})</span>
+                            </div>
+                            <div class="trade-row">
+                                <span class="trade-label">Kar/Zarar:</span>
+                                <span class="trade-value ${t.pnl >= 0 ? 'profit' : 'loss'}">${t.pnl >= 0 ? '+' : ''}${t.pnl.toFixed(2)}$</span>
+                            </div>
+                            <div class="trade-row">
+                                <span class="trade-label">Bakiye:</span>
+                                <span class="trade-value">${t.balance.toFixed(2)}$</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } catch (e) {
+                    tradeList.innerHTML = '<p style="text-align:center; color: var(--red);">Veri yüklenemedi.</p>';
+                }
+            }
+
+            function closeModal() {
+                document.getElementById('trade-modal').classList.remove('active');
             }
 
             setInterval(fetchData, 3000);
