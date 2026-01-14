@@ -297,6 +297,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    """Ana sayfa karsilama ve API dokumantasyonu."""
+    return {
+        "message": "Mothership V2: Quadrant Bot Sistemi Hazir!",
+        "version": "2.0.0",
+        "endpoints": {
+            "status": "/status - Genel sistem ozeti",
+            "bots": "/bots - Botlarin anlik durumlari",
+            "logs": "/logs - Sistem gunlukleri",
+            "arbitrage": "/arbitrage - Arbitraj firsatlari",
+            "history": "/history - Islem gecmisi (DB)",
+            "control": "/control/status - Detayli kontrol verisi"
+        },
+        "health": "Live"
+    }
+
 @app.get("/status")
 async def get_status():
     """Anlik sistem ozetini doner."""
