@@ -327,12 +327,14 @@ async def root():
 @app.get("/status")
 async def get_status():
     """Anlik sistem ozetini doner."""
+    from datetime import datetime, timedelta
+    turkey_time = (datetime.utcnow() + timedelta(hours=3)).strftime("%H:%M:%S")
     return {
         "active": SYSTEM_STATE["status"]["active"],
         "total_pnl": round(SYSTEM_STATE["status"]["total_pnl"], 2),
         "global_balance": round(SYSTEM_STATE["status"]["global_balance"], 2),
         "bot_count": len(SYSTEM_STATE["bots"]),
-        "last_update": time.strftime("%H:%M:%S")
+        "last_update": turkey_time
     }
 
 @app.get("/bots")
