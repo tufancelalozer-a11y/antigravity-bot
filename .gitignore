@@ -27,3 +27,10 @@ borsa_gunlugu.txt
 # OS
 .DS_Store
 Thumbs.db
+
+# Large Envs
+langflow_env/
+node_modules/
+.venv/
+env/
+venv/
