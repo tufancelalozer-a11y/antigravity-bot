@@ -7,11 +7,11 @@ from contextlib import asynccontextmanager
 import time
 import platform
 
-# --- Comprehensive Platform Mock (Windows Hang Fix) ---
-platform.system = lambda: "Windows"
-platform.win32_ver = lambda: ("10", "10.0.19045", "SP0", "Multiprocessor Free")
-platform.release = lambda: "10"
-platform.version = lambda: "10.0.19045"
+# --- Platform Compatibility ---
+if platform.system() == "Windows":
+    # Mocking for local development on Windows if needed, 
+    # but normally we want the real platform info on Linux/Render.
+    pass
 
 from database_manager import DatabaseManager
 from youtube_extractor import extract_channel_videos
@@ -1103,6 +1103,10 @@ async def full_status():
     }
 
 if __name__ == "__main__":
-    # Zombie python süreçlerini temizle (Sadece ana scriptte)
-    os.system('taskkill /f /im uvicorn.exe /t >nul 2>&1')
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # Zombie python süreçlerini temizle (Sadece Windows'ta yerel çalışırken)
+    if platform.system() == "Windows":
+        os.system('taskkill /f /im uvicorn.exe /t >nul 2>&1')
+    
+    # Render PORT uyumluluğu
+    port = int(os.getenv("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=port)
