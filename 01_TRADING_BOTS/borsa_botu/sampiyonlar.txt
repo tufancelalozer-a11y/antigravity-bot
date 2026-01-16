@@ -1,0 +1,17 @@
+--- BORSA BOTU SÜPER ŞAMPİYONLAR LİSTESİ ---
+Kayıt Tarihi: 2025-12-30
+
+Bu listedeki tüm sonuçlar 250$ başlangıç bakiyesi ve 100$ sabit işlem teminatı (margin) ile son 1 yıllık BTC/USDT verisinde test edilmiştir.
+
+1.  4h ADX (50x) -> Final Bakiye: 3734.78$ | WR: %52.6 | İşlem: 133
+2.  4h ADX+STOCH+WILLR (50x) -> Final Bakiye: 3122.88$ | WR: %77.6 | İşlem: 58
+3.  4h ADX+STOCH (50x) -> Final Bakiye: 3019.33$ | WR: %67.2 | İşlem: 58
+4.  4h ATR+ADX (50x) -> Final Bakiye: 2807.54$ | WR: %39.1 | İşlem: 233
+5.  4h RSI+ADX+STOCH (50x) -> Final Bakiye: 2670.23$ | WR: %76.5 | İşlem: 34
+6.  4h STOCH+WILLR (50x) -> Final Bakiye: 2541.29$ | WR: %73.0 | İşlem: 100
+7.  4h STOCH (50x) -> Final Bakiye: 2403.54$ | WR: %65.4 | İşlem: 104
+8.  4h RSI+ADX (50x) -> Final Bakiye: 2352.54$ | WR: %71.1 | İşlem: 38
+9.  4h RSI+STOCH (50x) -> Final Bakiye: 2320.18$ | WR: %74.4 | İşlem: 43
+10. 15m TRIX (50x) -> Final Bakiye: 2303.55$ | WR: %39.0 | İşlem: 611
+
+NOT: ADX indikatörünün devreye girmesi, piyasada trend olmadığı zamanlarda botun boş yere işlem açmasını engelleyerek kârı maksimize etmiştir.
