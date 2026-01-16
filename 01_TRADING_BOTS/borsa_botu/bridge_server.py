@@ -433,13 +433,11 @@ async def get_bot_history(bot_name: str):
     all_metrics = db.get_metrics()
     all_trades = all_metrics["trades"] # Burada 'Bot' key'i kullanılıyor
     
+    if bot_name == "ALL":
+        return {"bot_name": "SİSTEM", "trades": all_trades}
+        
     # Bot ismine göre filtrele
     bot_trades = [t for t in all_trades if t.get("Bot") == bot_name]
-    
-    # Eğer botun kendi işlemi yoksa ama sistemde genel işlemler varsa, 
-    # kullanıcıya boş göstermek yerine genel geçmişten örnekler sunabiliriz 
-    # veya "Henüz bu bot özelinde işlem yok" diyebiliriz.
-    
     return {"bot_name": bot_name, "trades": bot_trades}
 
 @app.get("/arbitrage")
@@ -755,6 +753,7 @@ async def get_dashboard():
             <div class="actions">
                 <button class="btn-reset" onclick="resetSystem()" style="background: #334155;">SİSTEMİ SIFIRLA (TEHLİKELİ)</button>
                 <a href="/blueprints" style="background: var(--accent); color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold; display: inline-block;">BOT BLUEPRINTS (ÇALIŞMA MANTIĞI)</a>
+                <button onclick="showBotHistory('ALL')" style="background: #1e293b; color: var(--text); border: 1px solid var(--accent); padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold;">TÜM GEÇMİŞ (LEGACY DAHİL)</button>
             </div>
         </div>
 
@@ -828,7 +827,8 @@ async def get_dashboard():
             }
 
             async function showBotHistory(botName) {
-                document.getElementById('modal-bot-name').innerText = `${botName} - İşlem Geçmişi`;
+                const isAll = botName === 'ALL';
+                document.getElementById('modal-bot-name').innerText = isAll ? "Tüm Sistem Geçmişi" : `${botName} - İşlem Geçmişi`;
                 const modal = document.getElementById('trade-modal');
                 const tradeList = document.getElementById('trade-list');
                 
@@ -836,16 +836,21 @@ async def get_dashboard():
                 modal.classList.add('active');
                 
                 try {
-                    const res = await fetch(`/history/${botName}`);
+                    const endpoint = isAll ? '/history/ALL' : `/history/${botName}`;
+                    const res = await fetch(endpoint);
                     const data = await res.json();
                     
-                    if (data.trades.length === 0) {
+                    if (!data.trades || data.trades.length === 0) {
                         tradeList.innerHTML = '<p style="text-align:center; color: var(--text-dim);">Henüz işlem yapılmamış.</p>';
                         return;
                     }
                     
                     tradeList.innerHTML = data.trades.map(t => `
                         <div class="trade-item">
+                            <div class="trade-row">
+                                <span class="trade-label">Bot:</span>
+                                <span class="trade-value" style="color: var(--accent)">${t.Bot || 'LEGACY'}</span>
+                            </div>
                             <div class="trade-row">
                                 <span class="trade-label">Yön:</span>
                                 <span class="trade-value" style="color: ${t.side === 'LONG' ? 'var(--green)' : 'var(--red)'}">${t.side}</span>
