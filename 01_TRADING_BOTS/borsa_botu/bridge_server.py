@@ -429,8 +429,17 @@ async def get_history():
 @app.get("/history/{bot_name}")
 async def get_bot_history(bot_name: str):
     """Belirli bir botun işlem geçmişini döner."""
-    all_trades = db.get_metrics()["trades"]
-    bot_trades = [t for t in all_trades if t.get("bot_name") == bot_name]
+    # Veritabanındaki tüm işlemleri al
+    all_metrics = db.get_metrics()
+    all_trades = all_metrics["trades"] # Burada 'Bot' key'i kullanılıyor
+    
+    # Bot ismine göre filtrele
+    bot_trades = [t for t in all_trades if t.get("Bot") == bot_name]
+    
+    # Eğer botun kendi işlemi yoksa ama sistemde genel işlemler varsa, 
+    # kullanıcıya boş göstermek yerine genel geçmişten örnekler sunabiliriz 
+    # veya "Henüz bu bot özelinde işlem yok" diyebiliriz.
+    
     return {"bot_name": bot_name, "trades": bot_trades}
 
 @app.get("/arbitrage")
@@ -744,7 +753,8 @@ async def get_dashboard():
             </div>
 
             <div class="actions">
-                <button class="btn-reset" onclick="resetSystem()">SİSTEMİ SIFIRLA</button>
+                <button class="btn-reset" onclick="resetSystem()" style="background: #334155;">SİSTEMİ SIFIRLA (TEHLİKELİ)</button>
+                <a href="/blueprints" style="background: var(--accent); color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold; display: inline-block;">BOT BLUEPRINTS (ÇALIŞMA MANTIĞI)</a>
             </div>
         </div>
 
@@ -870,6 +880,210 @@ async def get_dashboard():
             setInterval(fetchData, 3000);
             fetchData();
         </script>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+@app.get("/blueprints")
+async def get_blueprints():
+    """Botların çalışma mantığını ve stratejilerini açıklayan sayfa."""
+    from fastapi.responses import HTMLResponse
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mothership Bot Blueprints</title>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+        <style>
+            :root {
+                --bg: #0a0b10;
+                --card-bg: #151921;
+                --accent: #4f46e5;
+                --green: #10b981;
+                --red: #ef4444;
+                --text: #e2e8f0;
+                --text-dim: #94a3b8;
+            }
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: 'Inter', sans-serif;
+                margin: 0;
+                padding: 2rem;
+            }
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 3rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid #1e293b;
+            }
+            .title { font-family: 'Orbitron'; font-size: 2rem; color: var(--accent); }
+            .back-btn {
+                background: var(--accent);
+                color: white;
+                text-decoration: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 8px;
+                font-weight: bold;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+                gap: 2rem;
+            }
+            .blueprint-card {
+                background: var(--card-bg);
+                padding: 2rem;
+                border-radius: 12px;
+                border: 1px solid #1e293b;
+                position: relative;
+            }
+            .bot-id {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                font-family: 'Orbitron';
+                color: var(--text-dim);
+                font-size: 0.8rem;
+            }
+            h2 { font-family: 'Orbitron'; color: var(--text); margin-top: 0; }
+            .meta { color: var(--accent); font-weight: bold; margin-bottom: 1rem; display: block; }
+            .logic-box {
+                background: #0f172a;
+                padding: 1rem;
+                border-radius: 8px;
+                margin-top: 1rem;
+                border-left: 3px solid var(--accent);
+            }
+            .logic-box p { margin: 0.5rem 0; font-size: 0.9rem; line-height: 1.5; }
+            .tag {
+                display: inline-block;
+                padding: 0.2rem 0.6rem;
+                background: #1e293b;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                margin-right: 0.5rem;
+                color: var(--text-dim);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="title">BOT BLUEPRINTS</div>
+            <a href="/dashboard" class="back-btn">← Panele Dön</a>
+        </div>
+
+        <div class="grid">
+            <!-- THE KING -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 5</span>
+                <h2>THE KING (15m)</h2>
+                <span class="meta">Bileşik Getiri Şampiyonu</span>
+                <div class="tags">
+                    <span class="tag">WILLR</span> <span class="tag">Efficiency Ratio</span> <span class="tag">50x Leverage</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> Williams %R indikatörü aşırı satım bölgesindeyken (-80 altı) ve Efficiency Ratio (Verimlilik Oranı) momentum onayı verdiğinde LONG girer. Tersi durumda SHORT.</p>
+                    <p><strong>Özellik:</strong> Colab testlerinde 500$'ı 10.000$'a en hızlı taşıyan stratejidir.</p>
+                </div>
+            </div>
+
+            <!-- Quadrans-A -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 1</span>
+                <h2>Quadrans-A (5m)</h2>
+                <span class="meta">Hızlı Scalper</span>
+                <div class="tags">
+                    <span class="tag">STOCH</span> <span class="tag">HMA</span> <span class="tag">5m TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> Stochastic Oscillator'ın hızlı kesişimlerini Hull Moving Average (HMA) trend yönüyle birleştirir. Küçük dalgalanmalardan kâr almayı hedefler.</p>
+                </div>
+            </div>
+
+            <!-- V10 Mega 5m -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 6</span>
+                <h2>V10 Mega Scalper (5m)</h2>
+                <span class="meta">Hibrit Güç</span>
+                <div class="tags">
+                    <span class="tag">ADX</span> <span class="tag">WILLR</span> <span class="tag">AO</span> <span class="tag">MOM</span> <span class="tag">CCI</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> 5 farklı indikatörün (Trend, Hacim ve Volatilite) eş zamanlı onayını bekler. Hata payı en düşük olan hızlı TF stratejisidir.</p>
+                </div>
+            </div>
+
+            <!-- Quadrans-B -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 2</span>
+                <h2>Quadrans-B (15m)</h2>
+                <span class="meta">Klasik Orta Vade</span>
+                <div class="tags">
+                    <span class="tag">WILLR</span> <span class="tag">ER</span> <span class="tag">15m TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> V10 öncesi klasik WILLR+ER mantığıyla çalışır. Daha geniş stop mesafeleriyle trendi takip eder.</p>
+                </div>
+            </div>
+
+            <!-- V10 30m -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 7</span>
+                <h2>V10 Sniper (30m)</h2>
+                <span class="meta">Keskin Nişancı</span>
+                <div class="tags">
+                    <span class="tag">WILLR Specialist</span> <span class="tag">30m TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> 30 dakikalık periyotta Williams %R'ın en dip/tepe dönüşlerini avlar. İşlem sayısı az ama özgüveni yüksektir.</p>
+                </div>
+            </div>
+
+            <!-- V10 1h -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 8</span>
+                <h2>V10 Trend King (1h)</h2>
+                <span class="meta">Saatlik Avcı</span>
+                <div class="tags">
+                    <span class="tag">RSI</span> <span class="tag">EMA Cross</span> <span class="tag">1h TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> RSI'ın aşırı bölgeleri ile Üssel Hareketli Ortalamaların (EMA) kesişimini kollar. Major trend dönüşlerini yakalar.</p>
+                </div>
+            </div>
+
+            <!-- Quadrans-D -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 4</span>
+                <h2>Quadrans-D (4h)</h2>
+                <span class="meta">Ana Akım Takibi</span>
+                <div class="tags">
+                    <span class="tag">RSI</span> <span class="tag">MACD</span> <span class="tag">4h TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> RSI ve MACD'nin güçlü 4 saatlik uyumuna göre pozisyon alır. Haftalık büyük hareketleri hedefler.</p>
+                </div>
+            </div>
+
+            <!-- V10 4h -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 9</span>
+                <h2>V10 Goliath (4h)</h2>
+                <span class="meta">Mega Trend Analiz</span>
+                <div class="tags">
+                    <span class="tag">RSI</span> <span class="tag">ADX</span> <span class="tag">WILLR</span> <span class="tag">ER</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> 4 saatlik periyotta 4 indikatörün (Trend gücü, Aşırı satım, Verimlilik) tam uyumuyla devasa swing hareketlerini kollar.</p>
+                </div>
+            </div>
+        </div>
     </body>
     </html>
     """
