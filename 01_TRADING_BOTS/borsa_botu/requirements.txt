@@ -6,3 +6,4 @@ pandas_ta
 numpy
 requests
 python-multipart
+yt-dlp
