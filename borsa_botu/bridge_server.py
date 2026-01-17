@@ -7,11 +7,11 @@ from contextlib import asynccontextmanager
 import time
 import platform
 
-# --- Comprehensive Platform Mock (Windows Hang Fix) ---
-platform.system = lambda: "Windows"
-platform.win32_ver = lambda: ("10", "10.0.19045", "SP0", "Multiprocessor Free")
-platform.release = lambda: "10"
-platform.version = lambda: "10.0.19045"
+# --- Platform Compatibility ---
+if platform.system() == "Windows":
+    # Mocking for local development on Windows if needed, 
+    # but normally we want the real platform info on Linux/Render.
+    pass
 
 from database_manager import DatabaseManager
 from youtube_extractor import extract_channel_videos
@@ -60,7 +60,7 @@ SYSTEM_STATE = {
     "status": {
         "active": True,
         "total_pnl": 0.0,
-        "global_balance": 1000.0, # 4 bot için 250*4
+        "global_balance": 2000.0, # 8 bot için 250*8
     },
     "bots": [
         {
@@ -72,12 +72,33 @@ SYSTEM_STATE = {
             "strategy": "15m WILLR+ER", "active_trade": None, "settings": {"sl": 0.02, "ts_trigger": 0.01, "ts_offset": 0.005}
         },
         {
-            "id": 3, "name": "Quadrans-C", "active": False, "balance": 250.0, "pnl": 0.0,
-            "strategy": "1h ADX+VORTEX", "active_trade": None, "settings": {"sl": 0.03, "ts_trigger": 0.015, "ts_offset": 0.007}
-        },
-        {
             "id": 4, "name": "Quadrans-D", "active": False, "balance": 250.0, "pnl": 0.0,
             "strategy": "4h RSI+MACD", "active_trade": None, "settings": {"sl": 0.04, "ts_trigger": 0.02, "ts_offset": 0.01}
+        },
+        {
+            "id": 5, "name": "THE-KING-15m", "active": False, "balance": 250.0, "pnl": 0.0,
+            "strategy": "15m WILLR+ER_10 (V10)", "active_trade": None, "settings": {"sl": 0.02, "ts_trigger": 0.01, "ts_offset": 0.005},
+            "type": "V10", "indicators": ["WILLR", "ER"]
+        },
+        {
+            "id": 6, "name": "V10-5m-Mega", "active": False, "balance": 250.0, "pnl": 0.0,
+            "strategy": "5m ADX+WILLR+AO+MOM+CCI", "active_trade": None, "settings": {"sl": 0.02, "ts_trigger": 0.01, "ts_offset": 0.005},
+            "type": "V10", "indicators": ["ADX", "WILLR", "AO", "MOM", "CCI"]
+        },
+        {
+            "id": 7, "name": "V10-30m-Mega", "active": False, "balance": 250.0, "pnl": 0.0,
+            "strategy": "30m WILLR (V10)", "active_trade": None, "settings": {"sl": 0.02, "ts_trigger": 0.01, "ts_offset": 0.005},
+            "type": "V10", "indicators": ["WILLR"]
+        },
+        {
+            "id": 8, "name": "V10-1h-Trend", "active": False, "balance": 250.0, "pnl": 0.0,
+            "strategy": "1h RSI+EMA (V10)", "active_trade": None, "settings": {"sl": 0.03, "ts_trigger": 0.015, "ts_offset": 0.007},
+            "type": "V10", "indicators": ["RSI", "EMA"]
+        },
+        {
+            "id": 9, "name": "V10-4h-Trend", "active": False, "balance": 250.0, "pnl": 0.0,
+            "strategy": "4h RSI+ADX+WILLR+ER (V10)", "active_trade": None, "settings": {"sl": 0.04, "ts_trigger": 0.02, "ts_offset": 0.01},
+            "type": "V10", "indicators": ["RSI", "ADX", "WILLR", "ER"]
         }
     ],
     "arbitrage": [],
@@ -156,7 +177,7 @@ async def virtual_trader_worker():
     margin = 100.0
     leverage = 50
     
-    log_message("⚔️ KRIPTO KULE: Quadrant Müfrezesi Mevzileniyor (4'lü Bot Aktif)")
+    log_message("⚔️ KRIPTO KULE: Quadrant Müfrezesi Mevzileniyor (8 Bot Nöbette)")
     
     while True:
         try:
@@ -167,13 +188,17 @@ async def virtual_trader_worker():
             for tf in timeframes:
                 ohlcv = await exch.fetch_ohlcv(symbol, timeframe=tf, limit=100)
                 df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-                # Teknik Göstergeler
-                df.ta.stoch(append=True); df.ta.hma(append=True); df.ta.willr(append=True); 
-                df.ta.er(append=True); df.ta.adx(append=True); df.ta.vortex(append=True);
-                df.ta.rsi(append=True); df.ta.macd(append=True)
+                # Teknik Göstergeler (V10 Destekli Tam Set)
+                try:
+                    df.ta.rsi(append=True); df.ta.macd(append=True); df.ta.adx(append=True)
+                    df.ta.stoch(append=True); df.ta.willr(append=True); df.ta.supertrend(append=True)
+                    df.ta.ema(length=20, append=True); df.ta.ema(length=50, append=True)
+                    df.ta.er(append=True); df.ta.ao(append=True); df.ta.mom(append=True); df.ta.cci(append=True); df.ta.mfi(append=True)
+                except: pass
+                df.ffill(inplace=True)
                 ohlcv_data[tf] = df
 
-            # 4 Bot'u Döngüye Al
+            # Botları Döngüye Al
             for bot in SYSTEM_STATE["bots"]:
                 tf = bot["strategy"].split(" ")[0]
                 df = ohlcv_data.get(tf)
@@ -182,35 +207,86 @@ async def virtual_trader_worker():
                 curr_price = df['close'].iloc[-1]
                 active = bot.get("active_trade")
                 
-                # Sinyal Hesaplama
+                # --- SİNYAL ÜRETİMİ (V10 Özelleştirilmiş) ---
                 signal = "WAIT"
-                if "STOCH" in bot["strategy"]:
-                    if 'STOCHk_14_3_3' in df.columns and df['STOCHk_14_3_3'].iloc[-1] < 20: signal = "LONG"
-                    elif 'STOCHk_14_3_3' in df.columns and df['STOCHk_14_3_3'].iloc[-1] > 80: signal = "SHORT"
-                elif "WILLR" in bot["strategy"]:
-                    if 'WILLR_14' in df.columns and df['WILLR_14'].iloc[-1] < -80: signal = "LONG"
-                    elif 'WILLR_14' in df.columns and df['WILLR_14'].iloc[-1] > -20: signal = "SHORT"
-                elif "ADX" in bot["strategy"]:
-                    if 'ADX_14' in df.columns and df['ADX_14'].iloc[-1] > 25:
-                        signal = "LONG" if df['close'].iloc[-1] > df['close'].iloc[-2] else "SHORT"
-                elif "RSI" in bot["strategy"]:
-                    if 'RSI_14' in df.columns and df['RSI_14'].iloc[-1] < 30: signal = "LONG"
-                    elif 'RSI_14' in df.columns and df['RSI_14'].iloc[-1] > 70: signal = "SHORT"
+                
+                if bot.get("type") == "V10":
+                    # V10 Sinyal Mantığı: Belirtilen tüm indikatörlerin kesişimi
+                    long_conds = []
+                    short_conds = []
+                    
+                    for ind in bot["indicators"]:
+                        # Sütun isimlerini güvenli bul (Pandas-TA isimlendirmeleri değişkendir)
+                        col = next((c for c in df.columns if c.lower().startswith(ind.lower())), None)
+                        if not col: continue
+                        
+                        if ind == "RSI": 
+                            long_conds.append(df[col].iloc[-1] < 30); short_conds.append(df[col].iloc[-1] > 70)
+                        elif ind == "MACD":
+                            col_h = next((c for c in df.columns if 'MACDh' in c), col)
+                            long_conds.append(df[col_h].iloc[-1] > 0); short_conds.append(df[col_h].iloc[-1] < 0)
+                        elif ind == "ADX":
+                            long_conds.append(df[col].iloc[-1] > 25) # Trend gücü (Yön için fiyata bakılırsa V10 kuralı)
+                            long_conds.append(df['close'].iloc[-1] > df['close'].iloc[-2])
+                            short_conds.append(df[col].iloc[-1] > 25)
+                            short_conds.append(df['close'].iloc[-1] < df['close'].iloc[-2])
+                        elif ind == "WILLR":
+                            long_conds.append(df[col].iloc[-1] < -80); short_conds.append(df[col].iloc[-1] > -20)
+                        elif ind == "EMA":
+                            long_conds.append(df['EMA_20'].iloc[-1] > df['EMA_50'].iloc[-1])
+                            short_conds.append(df['EMA_20'].iloc[-1] < df['EMA_50'].iloc[-1])
+                        elif ind == "AO":
+                            long_conds.append(df[col].iloc[-1] > 0); short_conds.append(df[col].iloc[-1] < 0)
+                        elif ind == "MOM":
+                            long_conds.append(df[col].iloc[-1] > 0); short_conds.append(df[col].iloc[-1] < 0)
+                        elif ind == "CCI":
+                            long_conds.append(df[col].iloc[-1] < -100); short_conds.append(df[col].iloc[-1] > 100)
+                        elif ind == "ER":
+                            long_conds.append(df[col].iloc[-1] > 0.5); short_conds.append(df[col].iloc[-1] > 0.5)
+
+                    if long_conds and all(long_conds): signal = "LONG"
+                    elif short_conds and all(short_conds): signal = "SHORT"
+                else:
+                    # Orijinal Bot Mantıkları (A, B, D)
+                    if "STOCH" in bot["strategy"]:
+                        col = next((c for c in df.columns if 'STOCHk' in c), None)
+                        if col:
+                            if df[col].iloc[-1] < 20: signal = "LONG"
+                            elif df[col].iloc[-1] > 80: signal = "SHORT"
+                    elif "WILLR" in bot["strategy"] and bot.get("id") == 2: # Bot B
+                        col = next((c for c in df.columns if 'WILLR' in c), None)
+                        if col:
+                            if df[col].iloc[-1] < -80: signal = "LONG"
+                            elif df[col].iloc[-1] > -20: signal = "SHORT"
+                    elif "RSI" in bot["strategy"] and bot.get("id") == 4: # Bot D
+                        col = next((c for c in df.columns if 'RSI' in c), None)
+                        if col:
+                            if df[col].iloc[-1] < 30: signal = "LONG"
+                            elif df[col].iloc[-1] > 70: signal = "SHORT"
 
                 if not active:
                     if signal in ["LONG", "SHORT"]:
+                        # Bileşik Getiri Kuralı (V10 için)
+                        current_margin = margin
+                        if bot.get("type") == "V10" and bot["balance"] >= 1000:
+                            last_pnl = bot.get("_last_pnl_val", 0)
+                            current_margin = margin + max(0, last_pnl)
+                            current_margin = min(current_margin, bot["balance"] * 0.5)
+
                         bot["active_trade"] = {
                             "side": signal, "entry": curr_price, "peak": curr_price,
+                            "margin": current_margin,
                             "start_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         }
-                        save_state() # İşlem açıldığında kaydet
-                        log_message(f"🚀 [{bot['name']}] {signal} GIRILDI @ {curr_price}")
+                        save_state()
+                        log_message(f"🚀 [{bot['name']}] {signal} GIRILDI @ {curr_price} (M: {round(current_margin,1)}$)")
                 else:
-                    # PROFESYONEL RISK YÖNETİMİ
+                    # RISK YÖNETİMİ
                     entry = active["entry"]
                     peak = active["peak"]
                     side = active["side"]
                     settings = bot["settings"]
+                    current_margin = active.get("margin", margin)
                     
                     pnl_raw = (curr_price - entry) / entry if side == "LONG" else (entry - curr_price) / entry
                     
@@ -220,26 +296,29 @@ async def virtual_trader_worker():
                     is_exit = False
                     reason = ""
                     
-                    if pnl_raw <= -settings["sl"]: 
-                        is_exit = True; reason = "Stop Loss"
-                    elif pnl_raw >= settings["ts_trigger"]:
+                    # Trailing Stop V10 Kuralları (%1 kar sonrası %0.5 takip)
+                    if pnl_raw >= settings["ts_trigger"]:
                         ts_check = (active["peak"] - curr_price) / active["peak"] if side == "LONG" else (curr_price - active["peak"]) / active["peak"]
                         if ts_check >= settings["ts_offset"]:
                             is_exit = True; reason = "Trailing Stop"
-                    elif (side == "LONG" and signal == "SHORT") or (side == "SHORT" and signal == "LONG"):
-                        is_exit = True; reason = "Ters Sinyal"
-                    elif bot.get("_manual_exit"):
-                        is_exit = True; reason = "Manuel Kapatma"
-                        bot["_manual_exit"] = False # Reset flag
+                    
+                    if not is_exit:
+                        if pnl_raw <= -settings["sl"]: 
+                            is_exit = True; reason = "Stop Loss"
+                        elif (side == "LONG" and signal == "SHORT") or (side == "SHORT" and signal == "LONG"):
+                            is_exit = True; reason = "Ters Sinyal"
+                        elif bot.get("_manual_exit"):
+                            is_exit = True; reason = "Manuel Kapatma"
+                            bot["_manual_exit"] = False
                     
                     if is_exit:
-                        profit = pnl_raw * leverage * margin
+                        profit = pnl_raw * leverage * current_margin
                         bot["balance"] += profit
                         bot["pnl"] += profit
+                        bot["_last_pnl_val"] = profit
                         SYSTEM_STATE["status"]["total_pnl"] += profit
                         
                         try:
-                            # Bot ismi ve tüm detaylarla veritabanına işle
                             db.log_virtual_trade(
                                 bot_name=bot["name"],
                                 entry_time=active["start_time"],
@@ -250,16 +329,15 @@ async def virtual_trader_worker():
                         except Exception as e:
                             log_message(f"İşlem Kayıt Hatası: {e}")
                         bot["active_trade"] = None
-                        save_state() # İşlem kapandığında kaydet
+                        save_state()
                         log_message(f"🏁 [{bot['name']}] {side} KAPANDI ({reason}) | PnL: {round(profit,2)}$")
             
-            # Periyodik kaydet (Her döngüde bir kez pnl/balance güncelliği için)
             save_state()
-
         except Exception as e:
             log_message(f"⚠️ Quadrant Engine Hata: {str(e)}")
             
         await asyncio.sleep(30)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -288,7 +366,7 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(virtual_trader_worker())
     ]
     print(f"Mothership V2: Quadrant Bot ve Arbitraj motorlari ateslendi.")
-    SYSTEM_STATE["logs"].append("🎮 Quadrant Sistemi Hazir: 4 Bot Nöbette.")
+    SYSTEM_STATE["logs"].append("🎮 Quadrant Sistemi Hazir: 8 Bot Nöbette.")
     
     yield
     # Shutdown: Motorlari durdur ve baglantilari kapat
@@ -351,8 +429,15 @@ async def get_history():
 @app.get("/history/{bot_name}")
 async def get_bot_history(bot_name: str):
     """Belirli bir botun işlem geçmişini döner."""
-    all_trades = db.get_metrics()["trades"]
-    bot_trades = [t for t in all_trades if t.get("bot_name") == bot_name]
+    # Veritabanındaki tüm işlemleri al
+    all_metrics = db.get_metrics()
+    all_trades = all_metrics["trades"] # Burada 'Bot' key'i kullanılıyor
+    
+    if bot_name == "ALL":
+        return {"bot_name": "SİSTEM", "trades": all_trades}
+        
+    # Bot ismine göre filtrele
+    bot_trades = [t for t in all_trades if t.get("Bot") == bot_name]
     return {"bot_name": bot_name, "trades": bot_trades}
 
 @app.get("/arbitrage")
@@ -515,7 +600,7 @@ async def get_dashboard():
 
             .bots-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                 gap: 1.5rem;
                 margin-bottom: 2rem;
             }
@@ -652,7 +737,7 @@ async def get_dashboard():
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">MÜFREZE DURUMU</div>
-                    <div id="bot-count" class="stat-value" style="color: var(--accent)">4 BOT AKTİF</div>
+                    <div id="bot_count_text" class="stat-value" style="color: var(--accent)">8 BOT AKTİF</div>
                 </div>
             </div>
 
@@ -666,7 +751,9 @@ async def get_dashboard():
             </div>
 
             <div class="actions">
-                <button class="btn-reset" onclick="resetSystem()">SİSTEMİ SIFIRLA</button>
+                <button class="btn-reset" onclick="resetSystem()" style="background: #334155;">SİSTEMİ SIFIRLA (TEHLİKELİ)</button>
+                <a href="/blueprints" style="background: var(--accent); color: white; text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold; display: inline-block;">BOT BLUEPRINTS (ÇALIŞMA MANTIĞI)</a>
+                <button onclick="showBotHistory('ALL')" style="background: #1e293b; color: var(--text); border: 1px solid var(--accent); padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold;">TÜM GEÇMİŞ (LEGACY DAHİL)</button>
             </div>
         </div>
 
@@ -740,7 +827,8 @@ async def get_dashboard():
             }
 
             async function showBotHistory(botName) {
-                document.getElementById('modal-bot-name').innerText = `${botName} - İşlem Geçmişi`;
+                const isAll = botName === 'ALL';
+                document.getElementById('modal-bot-name').innerText = isAll ? "Tüm Sistem Geçmişi" : `${botName} - İşlem Geçmişi`;
                 const modal = document.getElementById('trade-modal');
                 const tradeList = document.getElementById('trade-list');
                 
@@ -748,16 +836,21 @@ async def get_dashboard():
                 modal.classList.add('active');
                 
                 try {
-                    const res = await fetch(`/history/${botName}`);
+                    const endpoint = isAll ? '/history/ALL' : `/history/${botName}`;
+                    const res = await fetch(endpoint);
                     const data = await res.json();
                     
-                    if (data.trades.length === 0) {
+                    if (!data.trades || data.trades.length === 0) {
                         tradeList.innerHTML = '<p style="text-align:center; color: var(--text-dim);">Henüz işlem yapılmamış.</p>';
                         return;
                     }
                     
                     tradeList.innerHTML = data.trades.map(t => `
                         <div class="trade-item">
+                            <div class="trade-row">
+                                <span class="trade-label">Bot:</span>
+                                <span class="trade-value" style="color: var(--accent)">${t.Bot || 'LEGACY'}</span>
+                            </div>
                             <div class="trade-row">
                                 <span class="trade-label">Yön:</span>
                                 <span class="trade-value" style="color: ${t.side === 'LONG' ? 'var(--green)' : 'var(--red)'}">${t.side}</span>
@@ -797,6 +890,210 @@ async def get_dashboard():
     """
     return HTMLResponse(content=html_content)
 
+@app.get("/blueprints")
+async def get_blueprints():
+    """Botların çalışma mantığını ve stratejilerini açıklayan sayfa."""
+    from fastapi.responses import HTMLResponse
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mothership Bot Blueprints</title>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+        <style>
+            :root {
+                --bg: #0a0b10;
+                --card-bg: #151921;
+                --accent: #4f46e5;
+                --green: #10b981;
+                --red: #ef4444;
+                --text: #e2e8f0;
+                --text-dim: #94a3b8;
+            }
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: 'Inter', sans-serif;
+                margin: 0;
+                padding: 2rem;
+            }
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 3rem;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid #1e293b;
+            }
+            .title { font-family: 'Orbitron'; font-size: 2rem; color: var(--accent); }
+            .back-btn {
+                background: var(--accent);
+                color: white;
+                text-decoration: none;
+                padding: 0.75rem 1.5rem;
+                border-radius: 8px;
+                font-weight: bold;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+                gap: 2rem;
+            }
+            .blueprint-card {
+                background: var(--card-bg);
+                padding: 2rem;
+                border-radius: 12px;
+                border: 1px solid #1e293b;
+                position: relative;
+            }
+            .bot-id {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                font-family: 'Orbitron';
+                color: var(--text-dim);
+                font-size: 0.8rem;
+            }
+            h2 { font-family: 'Orbitron'; color: var(--text); margin-top: 0; }
+            .meta { color: var(--accent); font-weight: bold; margin-bottom: 1rem; display: block; }
+            .logic-box {
+                background: #0f172a;
+                padding: 1rem;
+                border-radius: 8px;
+                margin-top: 1rem;
+                border-left: 3px solid var(--accent);
+            }
+            .logic-box p { margin: 0.5rem 0; font-size: 0.9rem; line-height: 1.5; }
+            .tag {
+                display: inline-block;
+                padding: 0.2rem 0.6rem;
+                background: #1e293b;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                margin-right: 0.5rem;
+                color: var(--text-dim);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="title">BOT BLUEPRINTS</div>
+            <a href="/dashboard" class="back-btn">← Panele Dön</a>
+        </div>
+
+        <div class="grid">
+            <!-- THE KING -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 5</span>
+                <h2>THE KING (15m)</h2>
+                <span class="meta">Bileşik Getiri Şampiyonu</span>
+                <div class="tags">
+                    <span class="tag">WILLR</span> <span class="tag">Efficiency Ratio</span> <span class="tag">50x Leverage</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> Williams %R indikatörü aşırı satım bölgesindeyken (-80 altı) ve Efficiency Ratio (Verimlilik Oranı) momentum onayı verdiğinde LONG girer. Tersi durumda SHORT.</p>
+                    <p><strong>Özellik:</strong> Colab testlerinde 500$'ı 10.000$'a en hızlı taşıyan stratejidir.</p>
+                </div>
+            </div>
+
+            <!-- Quadrans-A -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 1</span>
+                <h2>Quadrans-A (5m)</h2>
+                <span class="meta">Hızlı Scalper</span>
+                <div class="tags">
+                    <span class="tag">STOCH</span> <span class="tag">HMA</span> <span class="tag">5m TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> Stochastic Oscillator'ın hızlı kesişimlerini Hull Moving Average (HMA) trend yönüyle birleştirir. Küçük dalgalanmalardan kâr almayı hedefler.</p>
+                </div>
+            </div>
+
+            <!-- V10 Mega 5m -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 6</span>
+                <h2>V10 Mega Scalper (5m)</h2>
+                <span class="meta">Hibrit Güç</span>
+                <div class="tags">
+                    <span class="tag">ADX</span> <span class="tag">WILLR</span> <span class="tag">AO</span> <span class="tag">MOM</span> <span class="tag">CCI</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> 5 farklı indikatörün (Trend, Hacim ve Volatilite) eş zamanlı onayını bekler. Hata payı en düşük olan hızlı TF stratejisidir.</p>
+                </div>
+            </div>
+
+            <!-- Quadrans-B -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 2</span>
+                <h2>Quadrans-B (15m)</h2>
+                <span class="meta">Klasik Orta Vade</span>
+                <div class="tags">
+                    <span class="tag">WILLR</span> <span class="tag">ER</span> <span class="tag">15m TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> V10 öncesi klasik WILLR+ER mantığıyla çalışır. Daha geniş stop mesafeleriyle trendi takip eder.</p>
+                </div>
+            </div>
+
+            <!-- V10 30m -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 7</span>
+                <h2>V10 Sniper (30m)</h2>
+                <span class="meta">Keskin Nişancı</span>
+                <div class="tags">
+                    <span class="tag">WILLR Specialist</span> <span class="tag">30m TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> 30 dakikalık periyotta Williams %R'ın en dip/tepe dönüşlerini avlar. İşlem sayısı az ama özgüveni yüksektir.</p>
+                </div>
+            </div>
+
+            <!-- V10 1h -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 8</span>
+                <h2>V10 Trend King (1h)</h2>
+                <span class="meta">Saatlik Avcı</span>
+                <div class="tags">
+                    <span class="tag">RSI</span> <span class="tag">EMA Cross</span> <span class="tag">1h TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> RSI'ın aşırı bölgeleri ile Üssel Hareketli Ortalamaların (EMA) kesişimini kollar. Major trend dönüşlerini yakalar.</p>
+                </div>
+            </div>
+
+            <!-- Quadrans-D -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 4</span>
+                <h2>Quadrans-D (4h)</h2>
+                <span class="meta">Ana Akım Takibi</span>
+                <div class="tags">
+                    <span class="tag">RSI</span> <span class="tag">MACD</span> <span class="tag">4h TF</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> RSI ve MACD'nin güçlü 4 saatlik uyumuna göre pozisyon alır. Haftalık büyük hareketleri hedefler.</p>
+                </div>
+            </div>
+
+            <!-- V10 4h -->
+            <div class="blueprint-card">
+                <span class="bot-id">ID: 9</span>
+                <h2>V10 Goliath (4h)</h2>
+                <span class="meta">Mega Trend Analiz</span>
+                <div class="tags">
+                    <span class="tag">RSI</span> <span class="tag">ADX</span> <span class="tag">WILLR</span> <span class="tag">ER</span>
+                </div>
+                <div class="logic-box">
+                    <p><strong>Giriş Mantığı:</strong> 4 saatlik periyotta 4 indikatörün (Trend gücü, Aşırı satım, Verimlilik) tam uyumuyla devasa swing hareketlerini kollar.</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
 @app.get("/control/status")
 async def full_status():
     """Tum botlarin detayli durumunu doner."""
@@ -806,6 +1103,10 @@ async def full_status():
     }
 
 if __name__ == "__main__":
-    # Zombie python süreçlerini temizle (Sadece ana scriptte)
-    os.system('taskkill /f /im uvicorn.exe /t >nul 2>&1')
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # Zombie python süreçlerini temizle (Sadece Windows'ta yerel çalışırken)
+    if platform.system() == "Windows":
+        os.system('taskkill /f /im uvicorn.exe /t >nul 2>&1')
+    
+    # Render PORT uyumluluğu
+    port = int(os.getenv("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=port)

@@ -1,7 +1,7 @@
 {
     "status": {
         "active": true,
-        "total_pnl": -363.7900685148154,
+        "total_pnl": -543.6925293078791,
         "global_balance": 1000.0
     },
     "bots": [
@@ -15,7 +15,7 @@
             "active_trade": {
                 "side": "LONG",
                 "entry": 94235.5,
-                "peak": 94264.01,
+                "peak": 97551.69,
                 "start_time": "2026-01-05 23:45:47"
             },
             "settings": {
@@ -34,7 +34,7 @@
             "active_trade": {
                 "side": "LONG",
                 "entry": 93980.42,
-                "peak": 94121.99,
+                "peak": 97551.69,
                 "start_time": "2026-01-06 00:13:53"
             },
             "settings": {
@@ -47,14 +47,14 @@
             "id": 3,
             "name": "Quadrans-C",
             "active": false,
-            "balance": 439.5658855571937,
-            "pnl": 189.56588555719375,
+            "balance": 259.66342476413,
+            "pnl": 9.66342476413007,
             "strategy": "1h ADX+VORTEX",
             "active_trade": {
                 "side": "SHORT",
-                "entry": 94116.0,
-                "peak": 93975.0,
-                "start_time": "2026-01-06 00:07:08"
+                "entry": 97551.69,
+                "peak": 97324.26,
+                "start_time": "2026-01-15 01:01:33"
             },
             "settings": {
                 "sl": 0.03,
